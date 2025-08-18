@@ -1,12 +1,13 @@
-from gym import Env
-from gym.spaces import Discrete, Box
+import gymnasium as gym
+from gymnasium import Env
+from gymnasium.spaces import Discrete, Box
 import numpy as np
 import random
 import bpy
 import math
 from mathutils import Vector, Euler
 
-class pelletGrabberEnv(Env):
+class pelletGrabberEnv(gym.Env):
     def __init__(self):
         # --- RL Parameters ---
         self.action_space = Discrete(4)
@@ -48,7 +49,11 @@ class pelletGrabberEnv(Env):
         terminated = reward != 0 
         return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
 
-    def reset(self):
+    def reset(
+        self,
+        *,seed=None,
+        options: dict | None = None,
+    ):
         """Reset robot & target"""
         self.robot.location = Vector((0, 0, self.robot.dimensions.z/2))
         self.robot.rotation_euler.z = 0.0
@@ -93,7 +98,7 @@ class pelletGrabberEnv(Env):
         num_rays = 5
         arc_angle = math.radians(30)
         start_angle = -arc_angle / 2
-        max_distance = 2
+        max_distance = 5
 
         hit_reward = 0
         ray_slots = [max_distance] * num_rays
@@ -117,7 +122,7 @@ class pelletGrabberEnv(Env):
 
             if result:
                 if obj.name in [hit_obj.name for hit_obj in target_collection.objects]:
-                    # ✅ HIT TARGET FIRST → STOP IMMEDIATELY
+                    #  HIT TARGET FIRST → STOP IMMEDIATELY
                     if not plane.data.materials:
                         plane.data.materials.append(self.greenMat)
                     else:
@@ -125,13 +130,13 @@ class pelletGrabberEnv(Env):
 
                     bpy.data.objects.remove(obj, do_unlink=True)
                     self.target = None
-                    hit_reward = +5
+                    hit_reward = +1
                     target_hit = True
                     print(target_hit)
                     break   # 🚨 STOP scanning — don’t overwrite reward
 
                 elif obj.name in [hit_obj.name for hit_obj in wall_collection.objects]:
-                    # ✅ HIT WALL FIRST → STOP IMMEDIATELY
+                    #  HIT WALL FIRST → STOP IMMEDIATELY
                     if not plane.data.materials:
                         plane.data.materials.append(self.redMat)
                     else:

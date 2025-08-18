@@ -6,13 +6,13 @@ import time
 import random
 
 
-import gym
-from gym import logger, spaces
-from gym.envs.classic_control import utils
+import gymnasium as gym
+from gymnasium import spaces, logger
+from gymnasium.envs.classic_control import utils
 
 
 
-class CartPole3D:
+class CartPole3D(gym.Env):
     def __init__(self, sutton_barto_reward: bool = False, render_mode: str | None = None):
         self._sutton_barto_reward = sutton_barto_reward
         # --- Clean Scene safely ---
@@ -172,11 +172,12 @@ class CartPole3D:
 
     def reset(
         self,
-        *,
+        *,seed=None,
         options: dict | None = None,
     ):
         # Note that if you use custom reset bounds, it may lead to out-of-bound
         # state/observations.
+        super().reset(seed=seed)
         low, high = utils.maybe_parse_reset_bounds(
             options, -0.05, 0.05  # default low
         )  # default high
@@ -255,7 +256,7 @@ if __name__ == "__main__":
 
         #  When episode ends, move to next one
         if done:
-            print(f"🎯 Episode {current_episode} finished with score {score}")
+            print(f" Episode {current_episode} finished with score {score}")
             current_episode += 1
             done = False
             score = 0  # reset for next episode

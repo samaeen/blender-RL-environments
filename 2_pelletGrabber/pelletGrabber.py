@@ -77,37 +77,36 @@ class pelletGrabberEnv(Env):
         # Use object width (Y dimension) as wheel base
         wheel_base = self.robot.dimensions.y
 
-        if action == 0:       # turn left
-            v_l = -self.wheel_speed
-            v_r = self.wheel_speed
-        elif action == 1:     # turn right
-            v_l = self.wheel_speed
-            v_r = -self.wheel_speed
-        elif action == 2:     # forward
-            v_l = self.wheel_speed
-            v_r = self.wheel_speed
-        elif action == 3:     # backward
-            v_l = -self.wheel_speed
-            v_r = -self.wheel_speed
+        if action is not None:
+            wheel_base = self.robot.dimensions.y
 
-        reward, r1, r2, r3, r4, r5 = self.collide()
+            if action == 0:       # turn left
+                v_l = -self.wheel_speed
+                v_r = self.wheel_speed
+            elif action == 1:     # turn right
+                v_l = self.wheel_speed
+                v_r = -self.wheel_speed
+            elif action == 2:     # forward
+                v_l = self.wheel_speed
+                v_r = self.wheel_speed
+            elif action == 3:     # backward
+                v_l = -self.wheel_speed
+                v_r = -self.wheel_speed
 
-        # Differential drive equations
-        v = (v_r + v_l) / 2.0
-        omega = (v_r - v_l) / wheel_base
-        
-        # Get yaw rotation (Z axis)
-        yaw = self.robot.rotation_euler.z
-        
-        # Update location and rotation
-        self.robot.location.x += v * math.cos(yaw) 
-        self.robot.location.y += v * math.sin(yaw) 
-        self.robot.rotation_euler.z += omega 
+            reward, r1, r2, r3, r4, r5 = self.collide()
 
-        return self.robot.location.x, self.robot.location.y, self.robot.rotation_euler.z, r1, r2, r3, r4, r5, reward
+            # Differential drive equations
+            v = (v_r + v_l) / 2.0
+            omega = (v_r - v_l) / wheel_base
+            
+            # Get yaw rotation (Z axis)
+            yaw = self.robot.rotation_euler.z
+            
+            # Update location and rotation
+            self.robot.location.x += v * math.cos(yaw) 
+            self.robot.location.y += v * math.sin(yaw) 
+            self.robot.rotation_euler.z += omega 
 
-
-    def collide(self):
         plane = bpy.data.objects.get("Plane")
 
         #  Collections
@@ -137,10 +136,24 @@ class pelletGrabberEnv(Env):
             ray_dir = rotation.to_matrix() @ forward_dir
 
             #  Perform raycast
-            result, location, normal, index, obj, matrix = self.robot.ray_cast(
+            ray_result = self.robot.ray_cast(
                 self.robot.matrix_world.translation,
                 self.robot.matrix_world.translation + ray_dir * max_distance
             )
+
+            if len(ray_result) == 6:
+                result, location, normal, index, obj, matrix = ray_result
+            elif len(ray_result) == 5:
+                # Older Blender API: no result flag
+                location, normal, index, obj, matrix = ray_result
+                result = obj is not None  # fake a hit result
+            elif len(ray_result) == 4:
+                # Very old Blender/UPBGE (returns only hit, loc, normal, face)
+                result, location, normal, index = ray_result
+                obj = None
+                matrix = None
+            else:
+                raise RuntimeError(f"Unexpected ray_cast return length: {len(ray_result)}")
 
             if result and obj:
                 hit_distance = (location - self.robot.location).length
